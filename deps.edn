@@ -1,0 +1,20 @@
+{:deps {;; org.clojure/clojure            {:mvn/version "1.12.0"}
+        org.clojure/clojure         {:mvn/version "1.11.3"}
+        ;;clojupyter/clojupyter   {:mvn/version "0.4.332"}
+        ;;babashka/fs             {:mvn/version "0.5.23"}
+        ;;babashka/process        {:mvn/version "0.5.22"}
+        }
+ :paths   ["src-clj"]
+ :aliases {:install
+           {:main-opts ["-m" "clojupyter.cmdline" "install"]}
+           :prod
+           {:extra-paths []}
+
+           :build ; use `clj -X:build build-client`, NOT -T! build/app classpath contamination cannot be prevented
+           {:extra-paths ["src-clj-build"]
+            :ns-default  build
+            :extra-deps  {io.github.clojure/tools.build {:mvn/version "0.9.6"
+                                                         :exclusions  [com.google.guava/guava ; Guava version conflict between tools.build and clojurescript.
+                                                                       org.slf4j/slf4j-nop]}}} ; clashes with app logger
+           }
+ }
