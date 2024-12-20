@@ -20,11 +20,19 @@
   (let [jar-name (or (some-> jar-name str) ; override for Dockerfile builds to avoid needing to reconstruct the name
                    )
         _ (println :jar-name jar-name)
-        aliases [:prod]]
+        aliases [:prod]
+        basis (b/create-basis {:project "deps.edn"
+                               :aliases aliases
+                               :override-deps {'org.clojure/clojure         {:mvn/version "1.11.3"}
+                                               'org.clojure/core.async      {:mvn/version "1.6.681"}
+                                               'org.clojure/tools.reader    {:mvn/version "1.4.0"}
+                                               'org.clojure/tools.analyzer  {:mvn/version "1.2.0"}
+                                               'org.clojure/spec.alpha      {:mvn/version "0.3.218"}
+                                               'org.clojure/core.specs.alpha {:mvn/version "0.2.62"}}})]
     (log/info `uberjar "included aliases:" aliases)
     (b/uber {:class-dir class-dir
              :uber-file jar-name
-             :basis     (b/create-basis {:project "deps.edn" :aliases aliases})})
+             :basis     basis})
     (log/info jar-name)))
 
 ;; clj -X:build:prod build-client

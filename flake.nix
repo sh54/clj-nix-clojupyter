@@ -34,47 +34,92 @@
           pkgs = nixpkgs.legacyPackages.${system};
           modules = [
             {
+              projectSrc = ./.;
+              name = "sh54.pygpu/kernel";
+              version = "1.0";
+              main-ns = "user";
+              buildCommand = ''clj -X:build:prod uberjar :build/jar-name "target/clojupyter-standalone.jar"'';
+            }
+          ];
+        };
+      in kernel;
+
+      packages.troubleshoot = let
+        kernel = clj-nix.lib.mkCljApp {
+          pkgs = nixpkgs.legacyPackages.${system};
+          modules = [
+            {
               # projectSrc = modifiedSrc;
               projectSrc = ./.;
               name = "sh54.pygpu/kernel";
               version = "1.0";
               main-ns = "user";
 
-              # buildCommand = "clj -T:build uber";
+              buildCommand = ''
+                echo "==> Debugging Nix build environment"
+                echo "HOME: $HOME"
+                echo "TMPDIR: $TMPDIR"
+                echo "CLJ_CONFIG: $CLJ_CONFIG"
+                echo "CLJ_CACHE: $CLJ_CACHE"
+                echo "GITLIBS: $GITLIBS"
+                echo "JAVA_TOOL_OPTIONS: $JAVA_TOOL_OPTIONS"
+                echo "==> Current Directory:"
+                pwd
+                echo "==> Directory Contents:"
+                ls -la
 
-              buildCommand = ''clj -X:build:prod uberjar :build/jar-name "target/clojupyter-standalone.jar"'';
-              # buildCommand = ''clj -X:build:prod something :build/jar-name "clojupyter-standalone.jar"'';
-
-              # buildCommand = ''clj -X:build:prod uberjar'';
-
-              # buildCommand = ''clojure -A:depstar -m hf.depstar.uberjar clojupyter-standalone.jar'';
-              # builder-extra-inputs = [
-              #   pkgs.tailwindcss
-              # ];
-
-              # nativeImage.enable = true;
-              # customJdk.enable = true;
+                # Run your build command
+                echo "about to run `clj` commands!"
+                which clojure
+                echo "clojure --version"
+                clojure --version
+                echo "clj -Sdescribe"
+                clojure -Sdescribe
+                echo "clojure -Spath ..."
+                # All variants of this fail
+                clojure -Spath
+                clojure -Sdeps '{:deps {org.clojure/clojure {:mvn/version "1.11.3"}} :override-deps {org.clojure/clojure {:mvn/version "1.11.3"}}}' -Sverbose -Spath
+                clojure -Sverbose -Sdeps '{:deps {org.clojure/clojure {:mvn/version "1.11.3"}}}' -Spath
+                clojure -Sdeps '{:deps {org.clojure/clojure {:mvn/version "1.11.3"}}}' -Sforce -Spath
+                clojure -X:deps tree
+                clojure -Sverbose -X:build:prod uberjar :build/jar-name "target/clojupyter-standalone.jar"
+              '';
             }
           ];
         };
-      in kernel;
+      in kernel.overrideAttrs (old: {
+        buildPhase = ''
+          echo "Overriden buildPhase"
+        '' + old.buildPhase;
+        buildInputs = [
+          pkgs.which
+        ];
+      });
 
       devShells = {
-        default =
-          let
-            x = 1;
-          in pkgs.devshell.mkShell {
-            packages = [
-              pkgs.nodejs_23
-              pkgs.clojure
-              pkgs.zulu23
-              pkgs.git
-            ];
-            devshell.startup.remove-fake-git.text = ''
-            '';
-            commands = [
-            ];
-          };
+        default = pkgs.devshell.mkShell {
+          packages = [
+            pkgs.nodejs_23
+            pkgs.clojure
+            pkgs.zulu23
+          ];
+          commands = [
+            {
+              help = "Run clj-nix";
+              name = "clj-nix-deps-lock";
+              command = ''
+                  nix run github:jlesquembre/clj-nix#deps-lock
+                '';
+            }
+            {
+              help = "Build jar normally";
+              name = "clj-build";
+              command = ''
+                  clojure -X:build:prod uberjar :build/jar-name "target/clojupyter-standalone.jar"
+                '';
+            }
+          ];
+        };
       };
     });
 }
